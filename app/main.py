@@ -8,6 +8,8 @@ def main():
 
     path = client_msg[1]
 
+    print(f"Received message from client: {client_msg}")
+
     if path == "/":
         client.sendall(b"HTTP/1.1 200 OK\r\n\r\n")
     else:
@@ -17,8 +19,15 @@ def main():
                 f"HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: {len(endpoint_arr[2])}\r\n\r\n{endpoint_arr[2]}\r\n".encode()
             )
         elif endpoint_arr[1] == "user-agent":
+            # Find the index that ends with "User-Agent:"
+            user_agent = ""
+            for i, part in enumerate(client_msg):
+                if "User-Agent:" in part:
+                    user_agent = client_msg[i + 1].split("\r\n")[0]
+                    break
+            
             client.sendall(
-                f"HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: {len(client_msg[5])}\r\n\r\n{client_msg[5]}\r\n".encode()
+                f"HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: {len(user_agent)}\r\n\r\n{user_agent}\r\n".encode()
             )
         else:
             client.sendall(b"HTTP/1.1 404 Not Found\r\n\r\n")
