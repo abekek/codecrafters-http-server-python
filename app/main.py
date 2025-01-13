@@ -8,8 +8,6 @@ def main():
 
     path = client_msg[1]
 
-    print(f"Received message from {addr}: {client_msg}")
-
     if path == "/":
         client.sendall(b"HTTP/1.1 200 OK\r\n\r\n")
     else:
