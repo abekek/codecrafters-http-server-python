@@ -1,5 +1,6 @@
 import socket
 import threading
+import sys
 
 def handle_client(client):
     try:
@@ -30,7 +31,7 @@ def handle_client(client):
                 if client_msg[0] == "GET":
                     file_name = endpoint_arr[2]
                     try:
-                        with open(f"/tmp/{file_name}", "r") as file:
+                        with open(f"{directory}{file_name}", "r") as file:
                             content = file.read()
                             client.sendall(
                                 f"HTTP/1.1 200 OK\r\nContent-Type: application/octet-stream\r\nContent-Length: {len(content)}\r\n\r\n{content}\r\n".encode()
@@ -44,6 +45,10 @@ def handle_client(client):
 
 def main():
     server_socket = socket.create_server(("localhost", 4221), reuse_port=True)
+
+    if "--directory" in sys.argv:
+        global directory
+        directory = sys.argv[sys.argv.index("--directory") + 1]
     
     while True:
         client, _ = server_socket.accept()
