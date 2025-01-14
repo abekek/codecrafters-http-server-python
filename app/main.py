@@ -26,6 +26,17 @@ def handle_client(client):
                 client.sendall(
                     f"HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: {len(user_agent)}\r\n\r\n{user_agent}\r\n".encode()
                 )
+            elif endpoint_arr[1] == "files":
+                if client_msg[0] == "GET":
+                    file_name = endpoint_arr[2]
+                    try:
+                        with open(f"/tmp/{file_name}", "r") as file:
+                            content = file.read()
+                            client.sendall(
+                                f"HTTP/1.1 200 OK\r\nContent-Type: application/octet-stream\r\nContent-Length: {len(content)}\r\n\r\n{content}\r\n".encode()
+                            )
+                    except FileNotFoundError:
+                        client.sendall(b"HTTP/1.1 404 Not Found\r\n\r\n")
             else:
                 client.sendall(b"HTTP/1.1 404 Not Found\r\n\r\n")
     finally:
