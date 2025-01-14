@@ -38,6 +38,12 @@ def handle_client(client):
                             )
                     except FileNotFoundError:
                         client.sendall(b"HTTP/1.1 404 Not Found\r\n\r\n")
+                elif client_msg[0] == "POST":
+                    file_name = endpoint_arr[2]
+                    file_content = client_msg[-1]
+                    with open(f"{directory}{file_name}", "w") as file:
+                        file.write(file_content)
+                    client.sendall(b"HTTP/1.1 201 Created\r\n\r\n")
             else:
                 client.sendall(b"HTTP/1.1 404 Not Found\r\n\r\n")
     finally:
