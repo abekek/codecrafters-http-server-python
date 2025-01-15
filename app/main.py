@@ -32,7 +32,8 @@ def parse_http_request(data):
     }
 
 def handle_client(client):
-    response_200_format = ""
+    # Initialize with basic format by default
+    response_200_format = response_200_format_basic
     try:
         # Receive the complete HTTP request
         request_data = b''
@@ -59,16 +60,12 @@ def handle_client(client):
         # Parse the HTTP request
         request = parse_http_request(request_data.decode('utf-8'))
         path = request['path']
-
         headers = request['headers']
 
+        # Check Accept-Encoding header
         accept_encoding = headers.get('Accept-Encoding', '')
-        # Check if the Accept-Encoding header is not empty string
-        if len(accept_encoding) > 0:
-            if "gzip" in accept_encoding:
-                response_200_format = response_200_format_encoding
-            else:
-                response_200_format = response_200_format_basic
+        if accept_encoding and "gzip" in accept_encoding:
+            response_200_format = response_200_format_encoding
         
         if path == "/":
             client.sendall(b"HTTP/1.1 200 OK\r\n\r\n")
