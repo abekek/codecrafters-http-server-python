@@ -2,7 +2,8 @@ import socket
 import threading
 import sys
 
-response_200_format = "HTTP/1.1 200 OK\r\nContent-Type: {}\r\nContent-Length: {}\r\n\r\n{}\r\n"
+response_200_format_basic = "HTTP/1.1 200 OK\r\nContent-Type: {}\r\nContent-Length: {}\r\n\r\n{}\r\n"
+response_200_format_encoding = "HTTP/1.1 200 OK\r\nContent-Encoding: gzip\r\nContent-Type: {}\r\nContent-Length: {}\r\n\r\n{}\r\n"
 response_404 = "HTTP/1.1 404 Not Found\r\n\r\n"
 response_201 = "HTTP/1.1 201 Created\r\n\r\n"
 
@@ -31,6 +32,7 @@ def parse_http_request(data):
     }
 
 def handle_client(client):
+    response_200_format = ""
     try:
         # Receive the complete HTTP request
         request_data = b''
@@ -64,9 +66,9 @@ def handle_client(client):
         # Check if the Accept-Encoding header is not empty string
         if len(accept_encoding) > 0:
             if "gzip" in accept_encoding:
-                response_200_format = "HTTP/1.1 200 OK\r\nContent-Encoding: gzip\r\nContent-Type: {}\r\nContent-Length: {}\r\n\r\n{}\r\n"
+                response_200_format = response_200_format_encoding
             else:
-                response_200_format = "HTTP/1.1 200 OK\r\nContent-Type: {}\r\nContent-Length: {}\r\n\r\n{}\r\n"
+                response_200_format = response_200_format_basic
         
         if path == "/":
             client.sendall(b"HTTP/1.1 200 OK\r\n\r\n")
