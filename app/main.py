@@ -2,6 +2,10 @@ import socket
 import threading
 import sys
 
+response_200_format = "HTTP/1.1 200 OK\r\nContent-Type: {}\r\nContent-Length: {}\r\n\r\n{}\r\n"
+response_404 = "HTTP/1.1 404 Not Found\r\n\r\n"
+response_201 = "HTTP/1.1 201 Created\r\n\r\n"
+
 def parse_http_request(data):
     # Split the request into headers and body
     request_parts = data.split('\r\n\r\n', 1)
@@ -53,6 +57,16 @@ def handle_client(client):
         # Parse the HTTP request
         request = parse_http_request(request_data.decode('utf-8'))
         path = request['path']
+
+        headers = request['headers']
+
+        accept_encoding = headers.get('Accept-Encoding', '')
+        # Check if the Accept-Encoding header is not empty string
+        if len(accept_encoding) > 0:
+            if "gzip" in accept_encoding:
+                response_200_format = "HTTP/1.1 200 OK\r\nContent-Encoding: gzip\r\nContent-Type: {}\r\nContent-Length: {}\r\n\r\n{}\r\n"
+            else:
+                response_200_format = "HTTP/1.1 200 OK\r\nContent-Type: {}\r\nContent-Length: {}\r\n\r\n{}\r\n"
         
         if path == "/":
             client.sendall(b"HTTP/1.1 200 OK\r\n\r\n")
@@ -60,12 +74,12 @@ def handle_client(client):
             endpoint_arr = path.split("/")
             if endpoint_arr[1] == "echo":
                 client.sendall(
-                    f"HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: {len(endpoint_arr[2])}\r\n\r\n{endpoint_arr[2]}\r\n".encode()
+                    response_200_format.format("text/plain", len(endpoint_arr[2]), endpoint_arr[2]).encode()
                 )
             elif endpoint_arr[1] == "user-agent":
-                user_agent = request['headers'].get('User-Agent', '')
+                user_agent = headers.get('User-Agent', '')
                 client.sendall(
-                    f"HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: {len(user_agent)}\r\n\r\n{user_agent}\r\n".encode()
+                    response_200_format.format("text/plain", len(user_agent), user_agent).encode()
                 )
             elif endpoint_arr[1] == "files":
                 if request['method'] == "GET":
@@ -74,17 +88,17 @@ def handle_client(client):
                         with open(f"{directory}{file_name}", "r") as file:
                             content = file.read()
                             client.sendall(
-                                f"HTTP/1.1 200 OK\r\nContent-Type: application/octet-stream\r\nContent-Length: {len(content)}\r\n\r\n{content}\r\n".encode()
+                                response_200_format.format("application/octet-stream", len(content), content).encode()
                             )
                     except FileNotFoundError:
-                        client.sendall(b"HTTP/1.1 404 Not Found\r\n\r\n")
+                        client.sendall(response_404.encode())
                 elif request['method'] == "POST":
                     file_name = endpoint_arr[2]
                     with open(f"{directory}{file_name}", "w") as file:
                         file.write(request['body'])
-                    client.sendall(b"HTTP/1.1 201 Created\r\n\r\n")
+                    client.sendall(response_201.encode())
             else:
-                client.sendall(b"HTTP/1.1 404 Not Found\r\n\r\n")
+                client.sendall(response_404.encode())
     finally:
         client.close()
 
