@@ -64,9 +64,7 @@ def handle_client(client):
 
         # Check Accept-Encoding header
         accept_encoding = headers.get('Accept-Encoding', '')
-        accept_encoding_arr = accept_encoding.split(",")
-        accept_encoding_arr = [x.strip() for x in accept_encoding_arr]
-        if len(accept_encoding_arr) > 1 and "gzip" in accept_encoding_arr:
+        if accept_encoding and "gzip" in accept_encoding:
             response_200_format = response_200_format_encoding
         
         if path == "/":
