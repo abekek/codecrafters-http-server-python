@@ -1,11 +1,43 @@
 import socket
 import threading
 import sys
+import gzip
+import io
 
-response_200_format_basic = "HTTP/1.1 200 OK\r\nContent-Type: {}\r\nContent-Length: {}\r\n\r\n{}\r\n"
-response_200_format_encoding = "HTTP/1.1 200 OK\r\nContent-Encoding: gzip\r\nContent-Type: {}\r\nContent-Length: {}\r\n\r\n{}\r\n"
+response_200_format_basic = "HTTP/1.1 200 OK\r\nContent-Type: {}\r\nContent-Length: {}\r\n\r\n{}"
+response_200_format_encoding = "HTTP/1.1 200 OK\r\nContent-Type: {}\r\nContent-Encoding: gzip\r\nContent-Length: {}\r\n\r\n"
 response_404 = "HTTP/1.1 404 Not Found\r\n\r\n"
 response_201 = "HTTP/1.1 201 Created\r\n\r\n"
+
+def compress_content(content):
+    """Compress content using gzip"""
+    out = io.BytesIO()
+    with gzip.GzipFile(fileobj=out, mode='w') as gz:
+        gz.write(content.encode('utf-8'))
+    return out.getvalue()
+
+def send_response(client, content_type, content, headers):
+    """Send response with compression if supported"""
+    accept_encoding = headers.get('Accept-Encoding', '')
+    if 'gzip' in accept_encoding:
+        # Compress the content
+        compressed_content = compress_content(content)
+        # Send headers
+        header = response_200_format_encoding.format(
+            content_type, 
+            len(compressed_content)
+        ).encode('utf-8')
+        # Send response in parts
+        client.sendall(header)
+        client.sendall(compressed_content)
+    else:
+        # Send uncompressed response
+        response = response_200_format_basic.format(
+            content_type,
+            len(content),
+            content
+        ).encode('utf-8')
+        client.sendall(response)
 
 def parse_http_request(data):
     # Split the request into headers and body
@@ -32,8 +64,6 @@ def parse_http_request(data):
     }
 
 def handle_client(client):
-    # Initialize with basic format by default
-    response_200_format = response_200_format_basic
     try:
         # Receive the complete HTTP request
         request_data = b''
@@ -61,34 +91,23 @@ def handle_client(client):
         request = parse_http_request(request_data.decode('utf-8'))
         path = request['path']
         headers = request['headers']
-
-        # Check Accept-Encoding header
-        accept_encoding = headers.get('Accept-Encoding', '')
-        if accept_encoding and "gzip" in accept_encoding:
-            response_200_format = response_200_format_encoding
         
         if path == "/":
             client.sendall(b"HTTP/1.1 200 OK\r\n\r\n")
         else:
             endpoint_arr = path.split("/")
             if endpoint_arr[1] == "echo":
-                client.sendall(
-                    response_200_format.format("text/plain", len(endpoint_arr[2]), endpoint_arr[2]).encode()
-                )
+                send_response(client, "text/plain", endpoint_arr[2], headers)
             elif endpoint_arr[1] == "user-agent":
                 user_agent = headers.get('User-Agent', '')
-                client.sendall(
-                    response_200_format.format("text/plain", len(user_agent), user_agent).encode()
-                )
+                send_response(client, "text/plain", user_agent, headers)
             elif endpoint_arr[1] == "files":
                 if request['method'] == "GET":
                     file_name = endpoint_arr[2]
                     try:
                         with open(f"{directory}{file_name}", "r") as file:
                             content = file.read()
-                            client.sendall(
-                                response_200_format.format("application/octet-stream", len(content), content).encode()
-                            )
+                            send_response(client, "application/octet-stream", content, headers)
                     except FileNotFoundError:
                         client.sendall(response_404.encode())
                 elif request['method'] == "POST":
